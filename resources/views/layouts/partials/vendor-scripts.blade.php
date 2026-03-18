@@ -1,0 +1,1 @@
+@vite(['resources/js/app.js', 'resources/js/config.js'])
