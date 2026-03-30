@@ -17,6 +17,9 @@ class ApiDashboardController extends Controller
 {
     public function summary(Request $req)
     {
+        $filter = $req->get('filter', 'all');
+$from   = $req->get('from_date');
+$to     = $req->get('to_date');
         $totals = [
             'buildings'        => Building::count(),
             'units'            => Unit::count(),
@@ -98,4 +101,29 @@ class ApiDashboardController extends Controller
             ],
         ]);
     }
+    private function applyDateFilter($query, $filter, $from = null, $to = null)
+{
+    switch ($filter) {
+        case 'this_year':
+            return $query->whereYear('created_at', now()->year);
+
+        case 'this_month':
+            return $query->whereMonth('created_at', now()->month);
+
+        case 'this_week':
+            return $query->whereBetween('created_at', [
+                now()->startOfWeek(),
+                now()->endOfWeek()
+            ]);
+
+        case 'custom':
+            if ($from && $to) {
+                return $query->whereBetween('created_at', [$from, $to]);
+            }
+            return $query;
+
+        default:
+            return $query; // all time
+    }
+}
 }

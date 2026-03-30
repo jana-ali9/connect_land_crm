@@ -275,8 +275,30 @@
                     </button>
                 </div>
             </form>
-        </div>
 
+        </div>
+<button type="button" class="btn btn-outline-secondary {{ request('filter') === 'custom' ? 'active' : '' }}" onclick="toggleCustomDate()">
+            <i class="bx bx-calendar-event me-1"></i> Custom Range
+        </button>
+    </div>
+
+    {{-- صندوق اختيار التاريخ - يظهر فقط عند الضغط على الزر أو إذا كان الفلتر مفعل --}}
+    <div id="custom-date-box" class="card shadow-sm border-dashed p-3" style="display: {{ request('filter') === 'custom' ? 'block' : 'none' }}; max-width: 600px; background: var(--badge-soft-bg);">
+        <form method="GET" action="{{ url()->current() }}" class="row g-2 align-items-end">
+            <input type="hidden" name="filter" value="custom">
+            <div class="col-md-5">
+                <label class="form-label small fw-bold">From Date</label>
+                <input type="date" name="start_date" class="form-control" value="{{ request('start_date') }}" required>
+            </div>
+            <div class="col-md-5">
+                <label class="form-label small fw-bold">To Date</label>
+                <input type="date" name="end_date" class="form-control" value="{{ request('end_date') }}" required>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">Apply</button>
+            </div>
+        </form>
+    </div>
         {{-- KPI Row --}}
         <div class="row g-3">
             <div class="col-md-6 col-xl-3">
@@ -887,10 +909,21 @@
             // If google already loaded (unlikely), init immediately
             if (window.google && window.google.maps) window.initAssetsMap();
         })();
+
     </script>
 
     {{-- Load Google Maps JS once, with our callback --}}
     <script
         src="https://maps.googleapis.com/maps/api/js?key={{ config('services.google_maps.key') }}&callback=initAssetsMap"
         async defer></script>
+        <script>
+    function toggleCustomDate() {
+        var box = document.getElementById('custom-date-box');
+        if (box.style.display === 'none') {
+            box.style.display = 'block';
+        } else {
+            box.style.display = 'none';
+        }
+    }
+</script>
 @endsection

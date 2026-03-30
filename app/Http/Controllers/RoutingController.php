@@ -11,7 +11,7 @@ use App\Models\Land;
 use App\Models\PaymentHistory;
 use App\Models\UnitExpense;
 use Illuminate\Support\Facades\DB;
-
+use Carbon\Carbon;
 class RoutingController extends Controller
 {
     public function root(Request $request)
@@ -25,51 +25,91 @@ class RoutingController extends Controller
 
         // Determine filter range
         $filter = $request->get('filter', 'all');
-
-        switch ($filter) {
-            case 'week':
-                $startDate = $startOfWeek;
-                break;
-            case 'year':
-                $startDate = $startOfYear;
-                break;
-            case 'month':
-                $startDate = $startOfMonth;
-                break;
-            case 'all':
-            default:
-                $startDate = null;
-                break;
+        $startDate = null;
+        $endDate = null;
+        if ($filter === 'custom') {
+            if ($request->has('start_date') && $request->has('end_date')) {
+                $startDate = Carbon::parse($request->get('start_date'))->startOfDay();
+                $endDate   = Carbon::parse($request->get('end_date'))->endOfDay();
+            }
+        } else {
+            $startDate = match ($filter) {
+                'week'  => $today->copy()->startOfWeek(),
+                'month' => $today->copy()->startOfMonth(),
+                'year'  => $today->copy()->startOfYear(),
+                default => null,
+            };
         }
+       
 
         // Payments
-        $filteredPayments = PaymentHistory::query();
-        if ($startDate) {
-            $filteredPayments->where('created_at', '>=', $startDate);
+      $filteredPayments = PaymentHistory::query();
+if ($startDate) {
+    if ($endDate) {
+        $filteredPayments->whereBetween('created_at', [$startDate, $endDate]);
+    } else {
+        $filteredPayments->where('created_at', '>=', $startDate);
+    }
         }
         $currentAmountPaid = $filteredPayments->sum('amount_paid');
 
         // Invoices
         $filteredInvoices = Invoice::query();
         if ($startDate) {
+        if ($endDate) {
+                $filteredInvoices->whereBetween('invoice_date', [$startDate, $endDate]);
+            } else {    
             $filteredInvoices->where('invoice_date', '>=', $startDate);
+        }
         }
         $currentAmountDue = $filteredInvoices->sum(DB::raw('amount_due + services_cost - amount_paid'));
 
         // Expenses
         $filteredExpenses = UnitExpense::query();
         if ($startDate) {
+        if ($endDate) {
+                $filteredExpenses->whereBetween('created_at', [$startDate, $endDate]);
+            } else {    
             $filteredExpenses->where('created_at', '>=', $startDate);
+        }
         }
         $currentExpenses = $filteredExpenses->sum('amount');
 
         // Static data
-        $allbuildings = Building::all();
-        $alllands = Land::all();
+        $allbuildings = Building::query();
+if ($startDate) {
+    if ($endDate) {
+        $allbuildings->whereBetween('created_at', [$startDate, $endDate]);
+    } else {
+        $allbuildings->where('created_at', '>=', $startDate);
+    }
+}
+$allbuildings = $allbuildings->get();
 
-        $activeContractsCount = Contract::where('contract_status', 'active')
-            ->whereDate('end_date', '>=', $today)
-            ->count();
+
+$alllands = Land::query();
+if ($startDate) {
+    if ($endDate) {
+        $alllands->whereBetween('created_at', [$startDate, $endDate]);
+    } else {
+        $alllands->where('created_at', '>=', $startDate);
+    }
+}
+$alllands = $alllands->get();
+
+        $activeContractsCount = Contract::where('contract_status', 'active');
+
+if ($startDate) {
+    if ($endDate) {
+        $activeContractsCount->whereBetween('start_date', [$startDate, $endDate]);
+    } else {
+        $activeContractsCount->where('start_date', '>=', $startDate);
+    }
+}
+
+$activeContractsCount = $activeContractsCount
+    ->whereDate('end_date', '>=', $today)
+    ->count();
 
         $expiringContracts = Contract::where('contract_status', 'active')
             ->whereBetween('end_date', [$today, $expiringDate])
